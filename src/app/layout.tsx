@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "議事録メーカー",
+  title: "QROSS議事録メーカー",
   description: "音声ファイルから議事録を自動生成",
 };
 

@@ -176,7 +176,7 @@ export default function Home() {
       <header className="border-b border-gray-200 bg-white">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">
-            議事録メーカー
+            QROSS議事録メーカー
           </h1>
           {status === "done" && (
             <button
