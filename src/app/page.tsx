@@ -27,6 +27,8 @@ export default function Home() {
   const [dragOver, setDragOver] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"minutes" | "transcription">("minutes");
+  const [hasDiarization, setHasDiarization] = useState(false);
+  const [speakerCount, setSpeakerCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processFile = useCallback(async (file: File) => {
@@ -46,6 +48,8 @@ export default function Home() {
     setError("");
     setTranscription("");
     setMinutes(null);
+    setHasDiarization(false);
+    setSpeakerCount(0);
     setStatus("transcribing");
 
     try {
@@ -65,6 +69,8 @@ export default function Home() {
 
       const transcribeData = await transcribeRes.json();
       setTranscription(transcribeData.text);
+      setHasDiarization(transcribeData.hasDiarization || false);
+      setSpeakerCount(transcribeData.speakerCount || 0);
 
       // Step 2: Generate minutes
       setStatus("generating");
@@ -159,6 +165,8 @@ export default function Home() {
     setMinutes(null);
     setFileName("");
     setActiveTab("minutes");
+    setHasDiarization(false);
+    setSpeakerCount(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
 
@@ -414,7 +422,14 @@ export default function Home() {
             {activeTab === "transcription" && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-semibold text-gray-900">文字起こし結果</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-gray-900">文字起こし結果</h3>
+                    {hasDiarization && (
+                      <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">
+                        話者分離 ({speakerCount}人)
+                      </span>
+                    )}
+                  </div>
                   <button
                     onClick={async () => {
                       await navigator.clipboard.writeText(transcription);
@@ -426,8 +441,37 @@ export default function Home() {
                     {copied ? "コピーしました" : "コピー"}
                   </button>
                 </div>
-                <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 rounded-xl p-4 max-h-96 overflow-y-auto">
-                  {transcription}
+                <div className="bg-gray-50 rounded-xl p-4 max-h-96 overflow-y-auto space-y-1">
+                  {hasDiarization ? (
+                    transcription.split("\n").map((line, i) => {
+                      const match = line.match(/^(話者\d+): (.+)$/);
+                      if (!match) return <p key={i} className="text-sm text-gray-700">{line}</p>;
+                      const speaker = match[1];
+                      const text = match[2];
+                      const tagNum = parseInt(speaker.replace("話者", ""), 10);
+                      const colors = [
+                        "bg-blue-100 text-blue-700",
+                        "bg-orange-100 text-orange-700",
+                        "bg-green-100 text-green-700",
+                        "bg-purple-100 text-purple-700",
+                        "bg-pink-100 text-pink-700",
+                        "bg-teal-100 text-teal-700",
+                      ];
+                      const colorClass = colors[(tagNum - 1) % colors.length];
+                      return (
+                        <div key={i} className="flex gap-2 items-start">
+                          <span className={`shrink-0 px-2 py-0.5 text-xs font-bold rounded-full ${colorClass}`}>
+                            {speaker}
+                          </span>
+                          <span className="text-sm text-gray-700">{text}</span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                      {transcription}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
