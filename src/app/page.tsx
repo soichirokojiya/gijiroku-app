@@ -63,8 +63,12 @@ export default function Home() {
       });
 
       if (!transcribeRes.ok) {
-        const errData = await transcribeRes.json();
-        throw new Error(errData.error || "文字起こしに失敗しました");
+        let msg = `文字起こしに失敗しました (${transcribeRes.status})`;
+        try {
+          const errData = await transcribeRes.json();
+          msg = errData.error || msg;
+        } catch { /* non-JSON response */ }
+        throw new Error(msg);
       }
 
       const transcribeData = await transcribeRes.json();
@@ -82,8 +86,12 @@ export default function Home() {
       });
 
       if (!minutesRes.ok) {
-        const errData = await minutesRes.json();
-        throw new Error(errData.error || "議事録の生成に失敗しました");
+        let msg = `議事録の生成に失敗しました (${minutesRes.status})`;
+        try {
+          const errData = await minutesRes.json();
+          msg = errData.error || msg;
+        } catch { /* non-JSON response */ }
+        throw new Error(msg);
       }
 
       const minutesData = await minutesRes.json();

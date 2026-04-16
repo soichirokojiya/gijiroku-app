@@ -32,19 +32,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // Read file bytes once so both Google and Whisper can use them
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
     const credentials = getGoogleCredentials();
 
     // Try Google Speech-to-Text with diarization
     if (credentials) {
       try {
-        return await transcribeWithGoogle(file, credentials);
+        return await transcribeWithGoogle(buffer, credentials);
       } catch (error) {
         console.error("Google Speech error, falling back to Whisper:", error);
       }
     }
 
     // Fallback to Whisper (no diarization)
-    return await transcribeWithWhisper(file);
+    return await transcribeWithWhisper(buffer, file.name, file.type);
   } catch (error) {
     console.error("Transcription error:", error);
     const message =
@@ -54,11 +58,11 @@ export async function POST(request: Request) {
 }
 
 async function transcribeWithGoogle(
-  file: File,
+  buffer: Buffer,
   credentials: Record<string, unknown>
 ) {
   const client = new SpeechClient({ credentials });
-  const audioBytes = Buffer.from(await file.arrayBuffer()).toString("base64");
+  const audioBytes = buffer.toString("base64");
 
   const [operation] = await client.longRunningRecognize({
     audio: { content: audioBytes },
@@ -132,8 +136,16 @@ async function transcribeWithGoogle(
   });
 }
 
-async function transcribeWithWhisper(file: File) {
+async function transcribeWithWhisper(
+  buffer: Buffer,
+  fileName: string,
+  mimeType: string
+) {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+  // Recreate a File from the buffer for the OpenAI SDK
+  const uint8 = new Uint8Array(buffer);
+  const file = new File([uint8], fileName, { type: mimeType });
 
   const transcription = await openai.audio.transcriptions.create({
     file,
